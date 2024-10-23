@@ -1,0 +1,11 @@
+flask
+requests
+pdfplumber
+openai
+pytesseract
+pdf2image
+pymongo
+axios
+flask_cors
+boto3
+gunicorn
