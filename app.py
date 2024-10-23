@@ -25,7 +25,7 @@ from pymongo import MongoClient
 import mimetypes
 import os
 #pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+#pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 openai_key = os.getenv('OPENAI_API_KEY')
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -33,7 +33,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 MONGODB_URI = "mongodb+srv://Vaibhav:vaibhavattherate25@userdata.joyki.mongodb.net/?retryWrites=true&w=majority&appName=UserData"
-bucket_name = "firstbucket222003"  
+bucket_name = "mymediboard"  
 region_name = "eu-north-1"  # Example: "us-east-1
 def create_prompt( pdf_url,extracted_text=" "):
     # Structure the prompt for GPT-4
