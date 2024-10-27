@@ -24,8 +24,8 @@ from openai import OpenAI
 from pymongo import MongoClient
 import mimetypes
 import os
-#pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-#pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+import zipfile
+#pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 openai_key = os.getenv('OPENAI_API_KEY')
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -40,8 +40,7 @@ def create_prompt( pdf_url,extracted_text=" "):
     prompt = """
     You are an expert in analyzing medical reports. Given the following medical report, your task is to extract the key information and test results in a structured format.
 
-Please follow this output structure:
-
+**Output structure**:
 {
     "mob_no": "Extract the patient's mobile number, if present.",
     "name": "Extract the patient's name, if present.",
@@ -50,36 +49,102 @@ Please follow this output structure:
     "info": {
         "dd/mm/yyyy"("Extract the report date in the format dd/mm/yyyy, or write 'Not provided' if the date is not available."): 
          {
-            "Test Name 1"(mentioned In the report): {
-                "Parameter 1": "Extract the value of this parameter if present.",
-                "Parameter 2": "Extract the value of this parameter if present.",
+                "LDL Cholesterol Direct Test": "Extract the value and units if present.",
+                "Total Cholesterol": "Extract the value and units if present.",
+                "HDL Cholesterol Test": "Extract the value and units if present.",
+                "Triglycerides Test": "Extract the value and units if present.",
+                "Serum VLDL Cholesterol": "Extract the value and units if present.",
+                "LDL/HDL Ratio": "Extract the value if present.",
+                "TC/HDL Cholesterol Ratio": "Extract the value if present.",
+                "Non-HDL Cholesterol": "Extract the value if present.",
+                "HDL / LDL Cholesterol Ratio": "Extract the value if present.",
+                "TRIG / HDL Ratio": "Extract the value if present."
+                "AEC Test": "Extract the value if present.",
+                "Hemoglobin (Hb) Test": "Extract the value and units if present.",
+                "Platelet Count Test": "Extract the value and units if present.",
+                "Erythrocyte Count (RBC) Test": "Extract the value and units if present.",
                 ...
-            },
-            "Test Name 2"(mentioned In the report): {
-                "Parameter 1": "Extract the value of this parameter if present.",
-                ...
-            }
-        }
+           
+           
+         }
     }
+}
 
-Instructions:
-1. Identify and extract any tests present in the report (e.g., Lipid Profile, CBC, Thyroid Function Test, etc.).
-2. For each test, extract its specific parameters and values. If a test has no parameters or values, skip it.
-3. Ensure the format is strictly followed, do not return in json format.
-4. Extract the values with its units.
-5. If any data (like mobile number or date) is missing from the report, explicitly write "Not provided."
+**Instructions**:
+1. For each parameter, extract the exact keys provided in the specified test list below if they appear in the report. Use the key name exactly as it appears in the list (e.g., "LDL Cholesterol Direct Test",Erythrocyte Count (RBC) Test).
+2. If the parameter is not in the report than don't include it.
+3. If a parameter from the list is not found in the report, omit it from the output.
+4. If you find any other parameter under a test which is not in the list include it also.
+5. If the report includes a parameter not listed here, add it  with the format:
+6. Don't include the test name, include the parameters only.
+7. Ensure that values include their units where applicable.
+8. If any data (like mobile number or date) is missing, explicitly write "Not provided."
+9. Maintain the output format strictly, without JSON formatting.
+
+
+List of tests and parameters:
+    [
+        "LDL Cholesterol Direct Test", "Total Cholesterol", "HDL Cholesterol Test",
+        "Triglycerides Test", "Serum VLDL Cholesterol", "LDL/HDL Ratio",
+        "TC/HDL Cholesterol Ratio", "Non-HDL Cholesterol", "HDL / LDL Cholesterol Ratio",
+        "TRIG / HDL Ratio",
+        "AEC Test", "Hemoglobin (Hb) Test", "Platelet Count Test", "Erythrocyte Count (RBC) Test",
+        "Mean Cell Volume (MCV) Test", "Mean Cell Haemoglobin (MCH) Test", 
+        "Mean Corpuscular Hb Concentration (MCHC)", "Total Leucocytes / WBC Count (TLC) Test",
+        "Absolute Lymphocyte Count (ALC) Test", "Absolute Basophils Count (ABC) Test",
+        "Packed Cell Volume (PCV)", "Neutrophils", "Lymphocytes", "Monocytes", "Eosinophils",
+        "Basophils", "Absolute Neutrophil Count", "Absolute Monocyte Count",
+        "Immature Granulocyte Percentage", "RDW SD", "Nucleated Red Blood Cells Percentage",
+        "Immature Granulocytes", "Nucleated Red Blood Cells", "RDW-CV",
+        "Thyroxine (T4) Test", "Triiodothyronine (T3) Test",
+        "Thyroid Stimulating Hormone - Ultrasensitive (UTSH)".
+        "Free Triiodothyronine (FT3) Test", "Free Thyroxine (FT4) Test",
+        "Thyroid Stimulating Hormone - Ultrasensitive (UTSH)",
+        "Chloride (Cl) Test", "Potassium (K+) Test", "Serum Sodium (Na) Test",
+        "Apolipoprotein A-1 Test", "Apolipoprotein B Test", "High Sensitivity C-Reactive Protein (hs-CRP) Test",
+        "Lipoprotein (A) Test", "APO B/ APO A1 RATIO",
+        "Albumin Test", "Alkaline Phosphatase (ALP) Test", "Gamma Glutamyl Transferase (GGT) Test",
+        "Total Protein Test", "Aspartate Aminotransferase (AST / SGOT) Test",
+        "SGPT / ALT (Alanine Transaminase) Test", "Bilirubin Direct", "Bilirubin Total",
+        "Bilirubin-Indirect", "Globulin", "Albumin/Globulin Ratio", "SGOT/SGPT Ratio",
+        "Uric Acid Test", "Blood Urea Nitrogen (BUN)/Serum Urea Test", "Calcium (Ca) Test",
+        "Creatinine Test", "EGFR", "BUN/Creatinine Ratio", "Urea/Creatinine Ratio",
+        "Urea (Calculated)",
+        "Total Iron Binding Capacity", "Serum Iron Test", "UIBC", "Transferrin Saturation",
+        "HbA1c (Glycosylated Hemoglobin) Test", "Average Blood Glucose",
+        "Specific Gravity", "pH-value", "Nitrite", "Urine Protein Test", "Urine Glucose", "Ketones",
+        "Urobilinogen", "Urine Bilirubin", "Urine Blood", "Epithelial Cells", "Casts", "Crystals",
+        "Pus Cells", "Colour", "Appearance", "Bile Pigment", "Red Blood Cells", "Yeast Cells",
+        "Bacteria", "Volume", "Bile Salt", "Parasites", "Mucus", "Leukocyte Esterase"
+    ]
 
 """
-
-
-
-
-    # The 'extra' variable definition was incorrectly indented. It should be inside the function body.
     extra = f"""Here is the document text:
     {extracted_text}""" 
     if (extracted_text == " "):
         return prompt
-    return prompt + extra # Corrected indentation
+    return prompt +"\n"+"\n"+ extra 
+
+def filter(d):
+    date=list(d['info'].keys())[0]
+    data=d["info"][date]
+    for key in list(data.keys()):
+        if not data[key]:  # Checks for None, "", [], {}, etc.
+            del data[key]
+        elif data[key] == "Not provided" or data[key] == "Not Provided":
+            del data[key]
+def key_chacking(d,report):
+    date= list(d["info"].keys())[0]
+    data=d["info"][date]
+    for key,value in data.items():
+        for test , parameter in report.items():
+            if stringmatch(key,test):
+                d["info"][date][test]=d["info"][date].pop(key)
+                for param in parameter.values():
+                    if stringmatch(param,value):
+                        d["info"][date][test][param]=d["info"][date][test].pop(value)
+   
+
 def stream_pdf_to_s3_with_credentials(pdf_url, bucket_name, s3_file_name, aws_access_key_id, aws_secret_access_key, region_name):
     """Streams a PDF from a URL and uploads it directly to S3 with explicit credentials."""
     
@@ -182,6 +247,7 @@ def pdf_list(pdf_files):
   return pdf_texts
 
 def extract_info_image(image_url, prompt):
+
     attempts = 0
     max_attempts = 3
 
@@ -224,7 +290,36 @@ def extract_info_image(image_url, prompt):
     # If the maximum number of attempts is reached
     return "Error: Unable to process the image after 3 attempts."
 
-# List of prompts
+def download_and_zip_files(file_urls, zip_file_name):
+    with zipfile.ZipFile(zip_file_name, 'w') as zipf:
+        for url in file_urls:
+            # Get the file content from URL
+            response = requests.get(url)
+            filename = os.path.basename(url)  # Extract file name from URL
+            with open(filename, 'wb') as f:
+                f.write(response.content)  # Save file to local
+            
+            zipf.write(filename)  # Add to zip file
+            os.remove(filename) 
+def upload_to_s3_zip(zip_file_name, bucket_name, object_name, aws_access_key_id, aws_secret_access_key, region_name):
+    s3_client = boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region_name
+        )
+    if object_name is None:
+        object_name = zip_file_name
+    try:
+        s3_client.upload_file(zip_file_name, bucket_name, object_name)
+        print(f"Upload Successful: {object_name}")
+        s3_url = f"https://{bucket_name}.s3.amazonaws.com/{object_name}"
+        os.remove(zip_file_name)
+        print(f"File {zip_file_name} deleted successfully.")
+        return s3_url
+
+    except Exception as e:
+        print(f"Upload Failed: {e}")
 def create_jsonfile(pdf_texts):
   prompts =pdf_texts
 
@@ -254,7 +349,6 @@ def create_jsonfile(pdf_texts):
           file.write(json.dumps(json_data) + "\n")
 
   print("Data saved to requests.jsonl in JSONL format.")
-
 def final_Dictonary(final_response):
   text = final_response.text
   dict_strings = re.split(r'(?<=})\n(?={"id": "batch_req)', text)
@@ -263,13 +357,14 @@ def final_Dictonary(final_response):
   for i in range(len(dict_list)):
     final_dict.append(json.loads(dict_list[i]['response']['body']["choices"][0]["message"]['content']))
   return final_dict
-
-
 def stringmatch(string1, string2):
     # Create a SequenceMatcher object
+    string1=string1.lower()
+    string2=string2.lower()
     similarity_ratio = SequenceMatcher(None, string1, string2).ratio()
     
     # Check if similarity is at least 80%
+    print(f"similarity ratio: {similarity_ratio}")
     if similarity_ratio >= 0.8:
         return True
     else:
@@ -338,8 +433,19 @@ If you still wish *to upload this report* to your MediBoard, please *click the b
     
     # Return the API response (for debugging or logging purposes)
     return response.status_code, response.text
-def mongodbdata(d,mob_no,pdf_url,type):
-  time.sleep(120)
+
+def restructring_data(data,type_info,report_url):
+  for date_key, test_data in data["info"].items():
+    # Wrap the existing test data in a new dictionary under "normal"
+    data["info"][date_key] = {
+        type_info: {
+            **test_data,          # Add the test data here
+            "report_url": [report_url ]  # Include report_url inside the "normal" dictionary
+        }
+    }
+  return data
+def mongodbdata(d,mob_no,pdf_url):
+  time.sleep(150)
   client = MongoClient(MONGODB_URI)
   db = client["mydb"]
   collection = db["patientinfo"]
@@ -349,11 +455,13 @@ def mongodbdata(d,mob_no,pdf_url,type):
   name = d["name"]
 
   new_data = d['info']
-  url=""
+  typee=""
   for date in d['info']:
-    url=d['info'][date]['report_url'] 
+    typee=list(d['info'][date].keys())[0]
+
+  print(typee)
   
-  if type=='normal':
+  if typee=='normal':
         if find_similar_users(name):
                 print("Similar user found. Updating data.")
                 existing_user = collection.find_one({"mob_no": mob_no})
@@ -366,7 +474,7 @@ def mongodbdata(d,mob_no,pdf_url,type):
                     report_date = list(new_data.keys())[0]
 
 # Extract all tests under that date
-                    tests = new_data[report_date]
+                    tests = new_data[report_date]['normal']
 
                     # Loop through and append each new test
                     if "report_url" in tests:
@@ -378,18 +486,33 @@ def mongodbdata(d,mob_no,pdf_url,type):
                             {"mob_no": mob_no},  # Assuming each document has a unique identifier like a mobile number
                             {
                                 "$push": {
-                                    f"info.{report_date}.report_url": {"$each": new_urls}  # Append new URLs
+                                    f"info.{report_date}.{typee}.report_url": {"$each": new_urls}  # Append new URLs
                                 }
                             },
                             upsert=True  # Create the document if it doesn't exist
                         )
+                    document = collection.find_one({"mob_no": mob_no}, {"info": 1, "_id": 0})
+                    file_urls = document["info"][report_date]["normal"]["report_url"]
+                    zip_file_name = f"{uuid.uuid4()}.zip"
+                    download_and_zip_files(file_urls, zip_file_name)
+                    repo_url=upload_to_s3_zip(zip_file_name, bucket_name, zip_file_name, aws_access_key_id, aws_secret_access_key, region_name)
+                    print(repo_url)
+                    collection.update_one(
+                        {"mob_no": mob_no},  # Assuming each document has a unique _id for the patient
+                        {
+                            "$set": {
+                                f"info.{report_date}.{typee}.zip_url": repo_url
+                            }
+                        },
+                        upsert=True  # Create the document if it doesn't exist
+                    )
                     for test_name, test_data in tests.items():
                         # Update or append the test results for the given date dynamically
                         collection.update_one(
                             {"mob_no": mob_no},  # Assuming each document has a unique _id for the patient
                             {
                                 "$set": {
-                                    f"info.{report_date}.{test_name}": test_data
+                                    f"info.{report_date}.{typee}.{test_name}": test_data
                                 }
                             },
                             upsert=True  # Create the document if it doesn't exist
@@ -416,21 +539,23 @@ def mongodbdata(d,mob_no,pdf_url,type):
         else:
             message='this report can not be excess'
             print(message)
-            status_code, response_text = send_force_message(mob_no,url[0])
+            status_code, response_text = send_force_message(mob_no,pdf_url)
             print(f"API called: Status code {status_code}, Response: {response_text}")
-            print("No similar user found. Creating new user.NOt able to append the data.")
+            print("No similar user found. sent the message for force")
   else:
       existing_user = collection.find_one({"mob_no": mob_no})
-
+      print(existing_user)
       date_key = list(new_data.keys())[0]
       date_data = new_data[date_key]
       if existing_user:
                     report_date = list(new_data.keys())[0]
 
 # Extract all tests under that date
-                    tests = new_data[report_date]
+                    tests = new_data[report_date]['force']
+
+                    # Loop through and append each new test
                     if "report_url" in tests:
-    # Extract the report URLs
+                        # Extract the report URLs
                         new_urls = tests.pop("report_url")  # Remove 'report_url' from tests and save the URLs separately
 
                         # Append the new URLs to the existing report_url array
@@ -438,23 +563,38 @@ def mongodbdata(d,mob_no,pdf_url,type):
                             {"mob_no": mob_no},  # Assuming each document has a unique identifier like a mobile number
                             {
                                 "$push": {
-                                    f"info.{report_date}.report_url": {"$each": new_urls}  # Append new URLs
+                                    f"info.{report_date}.{typee}.report_url": {"$each": new_urls}  # Append new URLs
                                 }
                             },
                             upsert=True  # Create the document if it doesn't exist
                         )
-                    # Loop through and append each new test
+                    document = collection.find_one({"mob_no": mob_no}, {"info": 1, "_id": 0})
+                    file_urls = document["info"][report_date]["force"]["report_url"]
+                    zip_file_name = f"{uuid.uuid4()}.zip"
+                    download_and_zip_files(file_urls, zip_file_name)
+                    repo_url=upload_to_s3_zip(zip_file_name, bucket_name, zip_file_name, aws_access_key_id, aws_secret_access_key, region_name)
+                    print(repo_url)
+                    collection.update_one(
+                        {"mob_no": mob_no},  # Assuming each document has a unique _id for the patient
+                        {
+                            "$set": {
+                                f"info.{report_date}.{typee}.zip_url": repo_url
+                            }
+                        },
+                        upsert=True  # Create the document if it doesn't exist
+                    )
                     for test_name, test_data in tests.items():
                         # Update or append the test results for the given date dynamically
                         collection.update_one(
                             {"mob_no": mob_no},  # Assuming each document has a unique _id for the patient
                             {
                                 "$set": {
-                                    f"info.{report_date}.{test_name}": test_data
+                                    f"info.{report_date}.{typee}.{test_name}": test_data
                                 }
                             },
                             upsert=True  # Create the document if it doesn't exist
                         )
+
                     # collection.update_one(
                     #     {"mob_no": mob_no},
                     #     {"$set": {f"info.{date_key}": date_data}}
@@ -471,7 +611,6 @@ def mongodbdata(d,mob_no,pdf_url,type):
                     }
                     collection.insert_one(new_user_document)
                     print("New force user created and data added successfully.")
-                
                 
                 
 
@@ -516,10 +655,11 @@ def infoextract():
                     extracted_text=completion.choices[0].message.content.strip()
                     print(extracted_text)
                     data=json.loads(extracted_text)
-                    d=add_report_url_to_single_date(data, [link,type[0]])
+                    filter(data)
+                    d=restructring_data(data,type[0],link)
                     
                     print(d)
-                    mongodbdata(d,mob_num[j],link,type[0])
+                    mongodbdata(d,mob_num[j],link)
             else:
                 #random_number = random.randint(10000000, 99999999)  # Generates a random 8-digit number
                 s3_file_name = f"{uuid.uuid4()}.jpg"
@@ -528,10 +668,11 @@ def infoextract():
                 extracted_text=extract_info_image(pdf, prompt)
                 print(extracted_text)
                 data=json.loads(extracted_text)
-                d=add_report_url_to_single_date(data, [link,type[0]])
+                filter(data)
+                d=restructring_data(data,type[0],link)
                     
                 print(d)
-                mongodbdata(d,mob_num[j],link,type[0])
+                mongodbdata(d,mob_num[j],link)
 
 
 
@@ -547,7 +688,7 @@ def infoextract():
                     messages=[
                         {"role": "user", "content": pdf}
                     ],
-                    temperature=0.1,
+                    temperature=0.2,
                     top_p=1,          # Consider all possible tokens for precise output
                     #frequency_penalty=0,  # No penalty for repetition
                     presence_penalty=0,
@@ -555,20 +696,22 @@ def infoextract():
                     extracted_text=completion.choices[0].message.content.strip()
                     print(extracted_text)
                     data=json.loads(extracted_text)
-                    d=add_report_url_to_single_date(data, [pdf_url,type[0]])
+                    filter(data)
+                    d=d=restructring_data(data,type[0],pdf_url)
                     
                     print(d)
-                    mongodbdata(d,mob_num[j],pdf_url,type[0])
+                    mongodbdata(d,mob_num[j],pdf_url)
             else:
                 
                 prompt=create_prompt(pdf_url)
                 extracted_text=extract_info_image(pdf_url, prompt)
                 print(extracted_text)
                 data=json.loads(extracted_text)
-                d=add_report_url_to_single_date(data, [pdf_url,type[0]])
+                filter(data)
+                d=d=restructring_data(data,type[0],pdf_url)
                     
                 print(d)
-                mongodbdata(d,mob_num[j],pdf_url,type[0])
+                mongodbdata(d,mob_num[j],pdf_url)
             
         # print(pdf_urls)
         # client = OpenAI(api_key=openai_key)
@@ -629,4 +772,4 @@ def infoextract():
     #     mongodbdata(d, mob_num[i])
     return "done"
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0',port=8080)
