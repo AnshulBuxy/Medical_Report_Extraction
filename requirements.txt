@@ -9,3 +9,4 @@ axios
 flask_cors
 boto3
 gunicorn
+gevent
