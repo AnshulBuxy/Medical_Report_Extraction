@@ -19,4 +19,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 8080
 
 # Start the app with Gunicorn for handling multiple requests
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "4", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--worker-class", "gevent", "app:app"]
+
