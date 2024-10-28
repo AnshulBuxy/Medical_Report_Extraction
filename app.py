@@ -139,6 +139,11 @@ def filter(d):
     date=list(d['info'].keys())[0]
     data=d["info"][date]
     for key in list(data.keys()):
+      if isinstance(data.get(key), dict):
+        for test_name, test_data in data[key].items():
+          data[test_name] = test_data
+        del data[key]
+    for key in list(data.keys()):
         if not data[key]:  # Checks for None, "", [], {}, etc.
             del data[key]
         elif data[key] == "Not provided" or data[key] == "Not Provided":
