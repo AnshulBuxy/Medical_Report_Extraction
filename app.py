@@ -64,8 +64,16 @@ def create_prompt( pdf_url,extracted_text=" "):
                 "Platelet Count Test": "Extract the value and units if present.",
                 "Erythrocyte Count (RBC) Test": "Extract the value and units if present.",
                 "Total Leucocytes / WBC Count (TLC) Test":"Extract the value and units if present.",
-                "Absolute Lymphocyte Count (ALC) Test":"Extract the value and units if present."
-                ...
+                "Absolute Lymphocyte Count (ALC) Test":"Extract the value and units if present.",
+                "Mean Cell Volume (MCV) Test":"Extract the value and units if present.",
+                "Mean Cell Haemoglobin (MCH) Test":"Extract the value and units if present.",
+                "Mean Corpuscular Hb Concentration (MCHC)":"Extract the value and units if present.",
+                "Absolute Lymphocyte Count (ALC) Test":"Extract the value and units if present.",
+                "Absolute Basophils Count (ABC) Test":"Extract the value and units if present.",
+                "Packed Cell Volume (PCV)":"Extract the value and units if present.",
+                "Thyroxine (T4) Test":"Extract the value and units if present.",
+                ......
+                ......
            
            
          }
