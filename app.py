@@ -63,6 +63,8 @@ def create_prompt( pdf_url,extracted_text=" "):
                 "Hemoglobin (Hb) Test": "Extract the value and units if present.",
                 "Platelet Count Test": "Extract the value and units if present.",
                 "Erythrocyte Count (RBC) Test": "Extract the value and units if present.",
+                "Total Leucocytes / WBC Count (TLC) Test":"Extract the value and units if present.",
+                "Absolute Lymphocyte Count (ALC) Test":"Extract the value and units if present."
                 ...
            
            
@@ -74,7 +76,7 @@ def create_prompt( pdf_url,extracted_text=" "):
 1. For each parameter, extract the exact keys provided in the specified test list below if they appear in the report. Use the key name exactly as it appears in the list (e.g., "LDL Cholesterol Direct Test",Erythrocyte Count (RBC) Test).
 2. If the parameter is not in the report than don't include it.
 3. If a parameter from the list is not found in the report, omit it from the output.
-4. If you find any other parameter under a test which is not in the list include it also.
+4. If you find any other parameter  which is not in the list include it also.
 5. If the report includes a parameter not listed here, add it  with the format:
 6. Don't include the test name, include the parameters only.
 7. Ensure that values include their units where applicable.
